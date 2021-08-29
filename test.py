@@ -57,4 +57,33 @@ def test(data,
         # Load model
         model = attempt_load(weights, map_location=device)  # load FP32 model
         gs = max(int(model.stride.max()), 32)  # grid size (max stride)
-        imgsz = check_img_
+        imgsz = check_img_size(imgsz, s=gs)  # check img_size
+        
+        if trace:
+            model = TracedModel(model, device, imgsz)
+
+    # Half
+    half = device.type != 'cpu' and half_precision  # half precision only supported on CUDA
+    if half:
+        model.half()
+
+    # Configure
+    model.eval()
+    if isinstance(data, str):
+        is_coco = data.endswith('coco.yaml')
+        with open(data) as f:
+            data = yaml.load(f, Loader=yaml.SafeLoader)
+    check_dataset(data)  # check
+    nc = 1 if single_cls else int(data['nc'])  # number of classes
+    iouv = torch.linspace(0.5, 0.95, 10).to(device)  # iou vector for mAP@0.5:0.95
+    niou = iouv.numel()
+
+    # Logging
+    log_imgs = 0
+    if wandb_logger and wandb_logger.wandb:
+        log_imgs = min(wandb_logger.log_imgs, 100)
+    # Dataloader
+    if not training:
+        if device.type != 'cpu':
+            model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
+        task = opt.task if opt.task in ('train', 'va
