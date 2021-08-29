@@ -31,4 +31,30 @@ def test(data,
          model=None,
          dataloader=None,
          save_dir=Path(''),  # for saving images
-         sav
+         save_txt=False,  # for auto-labelling
+         save_hybrid=False,  # for hybrid auto-labelling
+         save_conf=False,  # save auto-label confidences
+         plots=True,
+         wandb_logger=None,
+         compute_loss=None,
+         half_precision=True,
+         trace=False,
+         is_coco=False,
+         v5_metric=False):
+    # Initialize/load model and set device
+    training = model is not None
+    if training:  # called by train.py
+        device = next(model.parameters()).device  # get model device
+
+    else:  # called directly
+        set_logging()
+        device = select_device(opt.device, batch_size=batch_size)
+
+        # Directories
+        save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
+        (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+
+        # Load model
+        model = attempt_load(weights, map_location=device)  # load FP32 model
+        gs = max(int(model.stride.max()), 32)  # grid size (max stride)
+        imgsz = check_img_
