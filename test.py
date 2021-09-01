@@ -104,4 +104,26 @@ def test(data,
     for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
         img = img.to(device, non_blocking=True)
         img = img.half() if half else img.float()  # uint8 to fp16/32
-        img /= 255.0  # 0 - 255 to
+        img /= 255.0  # 0 - 255 to 0.0 - 1.0
+        targets = targets.to(device)
+        nb, _, height, width = img.shape  # batch size, channels, height, width
+
+        with torch.no_grad():
+            # Run model
+            t = time_synchronized()
+            out, train_out = model(img, augment=augment)  # inference and training outputs
+            t0 += time_synchronized() - t
+
+            # Compute loss
+            if compute_loss:
+                loss += compute_loss([x.float() for x in train_out], targets)[1][:3]  # box, obj, cls
+
+            # Run NMS
+            targets[:, 2:] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
+            lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)] if save_hybrid else []  # for autolabelling
+            t = time_synchronized()
+            out = non_max_suppression(out, conf_thres=conf_thres, iou_thres=iou_thres, labels=lb, multi_label=True)
+            t1 += time_synchronized() - t
+
+        # Statistics per image
+        for si, pred in enumerate(ou
