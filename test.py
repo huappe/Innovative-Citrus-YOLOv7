@@ -240,4 +240,24 @@ def test(data,
     # Print speeds
     t = tuple(x / seen * 1E3 for x in (t0, t1, t0 + t1)) + (imgsz, imgsz, batch_size)  # tuple
     if not training:
-        print('Speed: %.1f/%.1f/%.1f ms inference/NMS/tota
+        print('Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g' % t)
+
+    # Plots
+    if plots:
+        confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))
+        if wandb_logger and wandb_logger.wandb:
+            val_batches = [wandb_logger.wandb.Image(str(f), caption=f.name) for f in sorted(save_dir.glob('test*.jpg'))]
+            wandb_logger.log({"Validation": val_batches})
+    if wandb_images:
+        wandb_logger.log({"Bounding Box Debugger/Images": wandb_images})
+
+    # Save JSON
+    if save_json and len(jdict):
+        w = Path(weights[0] if isinstance(weights, list) else weights).stem if weights is not None else ''  # weights
+        anno_json = './coco/annotations/instances_val2017.json'  # annotations json
+        pred_json = str(save_dir / f"{w}_predictions.json")  # predictions json
+        print('\nEvaluating pycocotools mAP... saving %s...' % pred_json)
+        with open(pred_json, 'w') as f:
+            json.dump(jdict, f)
+
+        try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipy
