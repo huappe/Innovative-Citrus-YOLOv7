@@ -260,4 +260,28 @@ def test(data,
         with open(pred_json, 'w') as f:
             json.dump(jdict, f)
 
-        try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipy
+        try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
+            from pycocotools.coco import COCO
+            from pycocotools.cocoeval import COCOeval
+
+            anno = COCO(anno_json)  # init annotations api
+            pred = anno.loadRes(pred_json)  # init predictions api
+            eval = COCOeval(anno, pred, 'bbox')
+            if is_coco:
+                eval.params.imgIds = [int(Path(x).stem) for x in dataloader.dataset.img_files]  # image IDs to evaluate
+            eval.evaluate()
+            eval.accumulate()
+            eval.summarize()
+            map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
+        except Exception as e:
+            print(f'pycocotools unable to run: {e}')
+
+    # Return results
+    model.float()  # for training
+    if not training:
+        s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
+        print(f"Results saved to {save_dir}{s}")
+    maps = np.zeros(nc) + map
+    for i, c in enumerate(ap_class):
+        maps[c] = ap[i]
+    
