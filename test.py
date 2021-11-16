@@ -310,4 +310,33 @@ if __name__ == '__main__':
     parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
     parser.add_argument('--v5-metric', action='store_true', help='assume maximum recall as 1.0 in AP calculation')
     opt = parser.parse_args()
-    opt.save_json |= opt.dat
+    opt.save_json |= opt.data.endswith('coco.yaml')
+    opt.data = check_file(opt.data)  # check file
+    print(opt)
+    #check_requirements()
+
+    if opt.task in ('train', 'val', 'test'):  # run normally
+        test(opt.data,
+             opt.weights,
+             opt.batch_size,
+             opt.img_size,
+             opt.conf_thres,
+             opt.iou_thres,
+             opt.save_json,
+             opt.single_cls,
+             opt.augment,
+             opt.verbose,
+             save_txt=opt.save_txt | opt.save_hybrid,
+             save_hybrid=opt.save_hybrid,
+             save_conf=opt.save_conf,
+             trace=not opt.no_trace,
+             v5_metric=opt.v5_metric
+             )
+
+    elif opt.task == 'speed':  # speed benchmarks
+        for w in opt.weights:
+            test(opt.data, w, opt.batch_size, opt.img_size, 0.25, 0.45, save_json=False, plots=False, v5_metric=opt.v5_metric)
+
+    elif opt.task == 'study':  # run over a range of settings and save/plot
+        # python test.py --task study --data coco.yaml --iou 0.65 --weights yolov7.pt
+        x =
