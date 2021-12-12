@@ -53,4 +53,33 @@ def check_anchors(dataset, model, thr=4.0, imgsz=640):
             m.anchor_grid[:] = anchors.clone().view_as(m.anchor_grid)  # for inference
             check_anchor_order(m)
             m.anchors[:] = anchors.clone().view_as(m.anchors) / m.stride.to(m.anchors.device).view(-1, 1, 1)  # loss
-            print(f'{prefix}New anchors saved to model. Update model *.yaml to use these anchors in the fut
+            print(f'{prefix}New anchors saved to model. Update model *.yaml to use these anchors in the future.')
+        else:
+            print(f'{prefix}Original anchors better than new anchors. Proceeding with original anchors.')
+    print('')  # newline
+
+
+def kmean_anchors(path='./data/coco.yaml', n=9, img_size=640, thr=4.0, gen=1000, verbose=True):
+    """ Creates kmeans-evolved anchors from training dataset
+
+        Arguments:
+            path: path to dataset *.yaml, or a loaded dataset
+            n: number of anchors
+            img_size: image size used for training
+            thr: anchor-label wh ratio threshold hyperparameter hyp['anchor_t'] used for training, default=4.0
+            gen: generations to evolve anchors using genetic algorithm
+            verbose: print all results
+
+        Return:
+            k: kmeans evolved anchors
+
+        Usage:
+            from utils.autoanchor import *; _ = kmean_anchors()
+    """
+    thr = 1. / thr
+    prefix = colorstr('autoanchor: ')
+
+    def metric(k, wh):  # compute metrics
+        r = wh[:, None] / k[None]
+        x = torch.min(r, 1. / r).min(2)[0]  # ratio metric
+        # x = wh_
