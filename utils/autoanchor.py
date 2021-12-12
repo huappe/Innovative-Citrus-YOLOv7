@@ -37,4 +37,20 @@ def check_anchors(dataset, model, thr=4.0, imgsz=640):
         bpr = (best > 1. / thr).float().mean()  # best possible recall
         return bpr, aat
 
-    anchors = m.anchor_grid.clone
+    anchors = m.anchor_grid.clone().cpu().view(-1, 2)  # current anchors
+    bpr, aat = metric(anchors)
+    print(f'anchors/target = {aat:.2f}, Best Possible Recall (BPR) = {bpr:.4f}', end='')
+    if bpr < 0.98:  # threshold to recompute
+        print('. Attempting to improve anchors, please wait...')
+        na = m.anchor_grid.numel() // 2  # number of anchors
+        try:
+            anchors = kmean_anchors(dataset, n=na, img_size=imgsz, thr=thr, gen=1000, verbose=False)
+        except Exception as e:
+            print(f'{prefix}ERROR: {e}')
+        new_bpr = metric(anchors)[0]
+        if new_bpr > bpr:  # replace anchors
+            anchors = torch.tensor(anchors, device=m.anchors.device).type_as(m.anchors)
+            m.anchor_grid[:] = anchors.clone().view_as(m.anchor_grid)  # for inference
+            check_anchor_order(m)
+            m.anchors[:] = anchors.clone().view_as(m.anchors) / m.stride.to(m.anchors.device).view(-1, 1, 1)  # loss
+            print(f'{prefix}New anchors saved to model. Update model *.yaml to use these anchors in the fut
