@@ -82,4 +82,23 @@ def kmean_anchors(path='./data/coco.yaml', n=9, img_size=640, thr=4.0, gen=1000,
     def metric(k, wh):  # compute metrics
         r = wh[:, None] / k[None]
         x = torch.min(r, 1. / r).min(2)[0]  # ratio metric
-        # x = wh_
+        # x = wh_iou(wh, torch.tensor(k))  # iou metric
+        return x, x.max(1)[0]  # x, best_x
+
+    def anchor_fitness(k):  # mutation fitness
+        _, best = metric(torch.tensor(k, dtype=torch.float32), wh)
+        return (best * (best > thr).float()).mean()  # fitness
+
+    def print_results(k):
+        k = k[np.argsort(k.prod(1))]  # sort small to large
+        x, best = metric(k, wh0)
+        bpr, aat = (best > thr).float().mean(), (x > thr).float().mean() * n  # best possible recall, anch > thr
+        print(f'{prefix}thr={thr:.2f}: {bpr:.4f} best possible recall, {aat:.2f} anchors past thr')
+        print(f'{prefix}n={n}, img_size={img_size}, metric_all={x.mean():.3f}/{best.mean():.3f}-mean/best, '
+              f'past_thr={x[x > thr].mean():.3f}-mean: ', end='')
+        for i, x in enumerate(k):
+            print('%i,%i' % (round(x[0]), round(x[1])), end=',  ' if i < len(k) - 1 else '\n')  # use in *.cfg
+        return k
+
+    if isinstance(path, str):  # *.yaml file
+        with open(p
