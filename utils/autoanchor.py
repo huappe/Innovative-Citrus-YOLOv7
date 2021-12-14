@@ -123,4 +123,28 @@ def kmean_anchors(path='./data/coco.yaml', n=9, img_size=640, thr=4.0, gen=1000,
     print(f'{prefix}Running kmeans for {n} anchors on {len(wh)} points...')
     s = wh.std(0)  # sigmas for whitening
     k, dist = kmeans(wh / s, n, iter=30)  # points, mean distance
-    assert len(k) == n, print(f'{pref
+    assert len(k) == n, print(f'{prefix}ERROR: scipy.cluster.vq.kmeans requested {n} points but returned only {len(k)}')
+    k *= s
+    wh = torch.tensor(wh, dtype=torch.float32)  # filtered
+    wh0 = torch.tensor(wh0, dtype=torch.float32)  # unfiltered
+    k = print_results(k)
+
+    # Plot
+    # k, d = [None] * 20, [None] * 20
+    # for i in tqdm(range(1, 21)):
+    #     k[i-1], d[i-1] = kmeans(wh / s, i)  # points, mean distance
+    # fig, ax = plt.subplots(1, 2, figsize=(14, 7), tight_layout=True)
+    # ax = ax.ravel()
+    # ax[0].plot(np.arange(1, 21), np.array(d) ** 2, marker='.')
+    # fig, ax = plt.subplots(1, 2, figsize=(14, 7))  # plot wh
+    # ax[0].hist(wh[wh[:, 0]<100, 0],400)
+    # ax[1].hist(wh[wh[:, 1]<100, 1],400)
+    # fig.savefig('wh.png', dpi=200)
+
+    # Evolve
+    npr = np.random
+    f, sh, mp, s = anchor_fitness(k), k.shape, 0.9, 0.1  # fitness, generations, mutation prob, sigma
+    pbar = tqdm(range(gen), desc=f'{prefix}Evolving anchors with Genetic Algorithm:')  # progress bar
+    for _ in pbar:
+        v = np.ones(sh)
+        while (v == 1).al
