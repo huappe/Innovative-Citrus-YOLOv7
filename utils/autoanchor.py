@@ -101,4 +101,26 @@ def kmean_anchors(path='./data/coco.yaml', n=9, img_size=640, thr=4.0, gen=1000,
         return k
 
     if isinstance(path, str):  # *.yaml file
-        with open(p
+        with open(path) as f:
+            data_dict = yaml.load(f, Loader=yaml.SafeLoader)  # model dict
+        from utils.datasets import LoadImagesAndLabels
+        dataset = LoadImagesAndLabels(data_dict['train'], augment=True, rect=True)
+    else:
+        dataset = path  # dataset
+
+    # Get label wh
+    shapes = img_size * dataset.shapes / dataset.shapes.max(1, keepdims=True)
+    wh0 = np.concatenate([l[:, 3:5] * s for s, l in zip(shapes, dataset.labels)])  # wh
+
+    # Filter
+    i = (wh0 < 3.0).any(1).sum()
+    if i:
+        print(f'{prefix}WARNING: Extremely small objects found. {i} of {len(wh0)} labels are < 3 pixels in size.')
+    wh = wh0[(wh0 >= 2.0).any(1)]  # filter > 2 pixels
+    # wh = wh * (np.random.rand(wh.shape[0], 1) * 0.9 + 0.1)  # multiply by random scale 0-1
+
+    # Kmeans calculation
+    print(f'{prefix}Running kmeans for {n} anchors on {len(wh)} points...')
+    s = wh.std(0)  # sigmas for whitening
+    k, dist = kmeans(wh / s, n, iter=30)  # points, mean distance
+    assert len(k) == n, print(f'{pref
