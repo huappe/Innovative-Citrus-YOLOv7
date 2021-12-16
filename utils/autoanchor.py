@@ -147,4 +147,14 @@ def kmean_anchors(path='./data/coco.yaml', n=9, img_size=640, thr=4.0, gen=1000,
     pbar = tqdm(range(gen), desc=f'{prefix}Evolving anchors with Genetic Algorithm:')  # progress bar
     for _ in pbar:
         v = np.ones(sh)
-        while (v == 1).al
+        while (v == 1).all():  # mutate until a change occurs (prevent duplicates)
+            v = ((npr.random(sh) < mp) * npr.random() * npr.randn(*sh) * s + 1).clip(0.3, 3.0)
+        kg = (k.copy() * v).clip(min=2.0)
+        fg = anchor_fitness(kg)
+        if fg > f:
+            f, k = fg, kg.copy()
+            pbar.desc = f'{prefix}Evolving anchors with Genetic Algorithm: fitness = {f:.4f}'
+            if verbose:
+                print_results(k)
+
+    return print_results(k)
