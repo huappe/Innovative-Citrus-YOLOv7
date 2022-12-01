@@ -64,4 +64,28 @@ def ap_per_class(tp, conf, pred_cls, target_cls, v5_metric=False, plot=False, sa
             for j in range(tp.shape[1]):
                 ap[ci, j], mpre, mrec = compute_ap(recall[:, j], precision[:, j], v5_metric=v5_metric)
                 if plot and j == 0:
-                    py.append(np.interp(p
+                    py.append(np.interp(px, mrec, mpre))  # precision at mAP@0.5
+
+    # Compute F1 (harmonic mean of precision and recall)
+    f1 = 2 * p * r / (p + r + 1e-16)
+    if plot:
+        plot_pr_curve(px, py, ap, Path(save_dir) / 'PR_curve.png', names)
+        plot_mc_curve(px, f1, Path(save_dir) / 'F1_curve.png', names, ylabel='F1')
+        plot_mc_curve(px, p, Path(save_dir) / 'P_curve.png', names, ylabel='Precision')
+        plot_mc_curve(px, r, Path(save_dir) / 'R_curve.png', names, ylabel='Recall')
+
+    i = f1.mean(0).argmax()  # max F1 index
+    return p[:, i], r[:, i], ap, f1[:, i], unique_classes.astype('int32')
+
+
+def compute_ap(recall, precision, v5_metric=False):
+    """ Compute the average precision, given the recall and precision curves
+    # Arguments
+        recall:    The recall curve (list)
+        precision: The precision curve (list)
+        v5_metric: Assume maximum recall to be 1.0, as in YOLOv5, MMDetetion etc.
+    # Returns
+        Average precision, precision curve, recall curve
+    """
+
+    # Append sentinel values to beginning an
