@@ -88,4 +88,29 @@ def compute_ap(recall, precision, v5_metric=False):
         Average precision, precision curve, recall curve
     """
 
-    # Append sentinel values to beginning an
+    # Append sentinel values to beginning and end
+    if v5_metric:  # New YOLOv5 metric, same as MMDetection and Detectron2 repositories
+        mrec = np.concatenate(([0.], recall, [1.0]))
+    else:  # Old YOLOv5 metric, i.e. default YOLOv7 metric
+        mrec = np.concatenate(([0.], recall, [recall[-1] + 0.01]))
+    mpre = np.concatenate(([1.], precision, [0.]))
+
+    # Compute the precision envelope
+    mpre = np.flip(np.maximum.accumulate(np.flip(mpre)))
+
+    # Integrate area under curve
+    method = 'interp'  # methods: 'continuous', 'interp'
+    if method == 'interp':
+        x = np.linspace(0, 1, 101)  # 101-point interp (COCO)
+        ap = np.trapz(np.interp(x, mrec, mpre), x)  # integrate
+    else:  # 'continuous'
+        i = np.where(mrec[1:] != mrec[:-1])[0]  # points where x axis (recall) changes
+        ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])  # area under curve
+
+    return ap, mpre, mrec
+
+
+class ConfusionMatrix:
+    # Updated version of https://github.com/kaanakan/object_detection_confusion_matrix
+    def __init__(self, nc, conf=0.25, iou_thres=0.45):
+        se
