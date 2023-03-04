@@ -112,4 +112,24 @@ class WandbLogger():
             prefix = colorstr('wandb: ')
             print(f"{prefix}Install Weights & Biases for YOLOR logging with 'pip install wandb' (recommended)")
 
-    def check_and_upload_dataset(self, 
+    def check_and_upload_dataset(self, opt):
+        assert wandb, 'Install wandb to upload dataset'
+        check_dataset(self.data_dict)
+        config_path = self.log_dataset_artifact(opt.data,
+                                                opt.single_cls,
+                                                'YOLOR' if opt.project == 'runs/train' else Path(opt.project).stem)
+        print("Created dataset config file ", config_path)
+        with open(config_path) as f:
+            wandb_data_dict = yaml.load(f, Loader=yaml.SafeLoader)
+        return wandb_data_dict
+
+    def setup_training(self, opt, data_dict):
+        self.log_dict, self.current_epoch, self.log_imgs = {}, 0, 16  # Logging Constants
+        self.bbox_interval = opt.bbox_interval
+        if isinstance(opt.resume, str):
+            modeldir, _ = self.download_model_artifact(opt)
+            if modeldir:
+                self.weights = Path(modeldir) / "last.pt"
+                config = self.wandb_run.config
+                opt.weights, opt.save_period, opt.batch_size, opt.bbox_interval, opt.epochs, opt.hyp = str(
+                
