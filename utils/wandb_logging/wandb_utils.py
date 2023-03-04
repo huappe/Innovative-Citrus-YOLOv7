@@ -94,4 +94,22 @@ class WandbLogger():
         elif self.wandb:
             self.wandb_run = wandb.init(config=opt,
                                         resume="allow",
-                                        project='YOLOR' if opt.project == 'run
+                                        project='YOLOR' if opt.project == 'runs/train' else Path(opt.project).stem,
+                                        name=name,
+                                        job_type=job_type,
+                                        id=run_id) if not wandb.run else wandb.run
+        if self.wandb_run:
+            if self.job_type == 'Training':
+                if not opt.resume:
+                    wandb_data_dict = self.check_and_upload_dataset(opt) if opt.upload_dataset else data_dict
+                    # Info useful for resuming from artifacts
+                    self.wandb_run.config.opt = vars(opt)
+                    self.wandb_run.config.data_dict = wandb_data_dict
+                self.data_dict = self.setup_training(opt, data_dict)
+            if self.job_type == 'Dataset Creation':
+                self.data_dict = self.check_and_upload_dataset(opt)
+        else:
+            prefix = colorstr('wandb: ')
+            print(f"{prefix}Install Weights & Biases for YOLOR logging with 'pip install wandb' (recommended)")
+
+    def check_and_upload_dataset(self, 
