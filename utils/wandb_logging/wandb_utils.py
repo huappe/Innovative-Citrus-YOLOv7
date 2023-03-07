@@ -140,4 +140,22 @@ class WandbLogger():
                                                                                            opt.artifact_alias)
             self.val_artifact_path, self.val_artifact = self.download_dataset_artifact(data_dict.get('val'),
                                                                                        opt.artifact_alias)
-            self.result_artifact, self.result_table, self.val_table, s
+            self.result_artifact, self.result_table, self.val_table, self.weights = None, None, None, None
+            if self.train_artifact_path is not None:
+                train_path = Path(self.train_artifact_path) / 'data/images/'
+                data_dict['train'] = str(train_path)
+            if self.val_artifact_path is not None:
+                val_path = Path(self.val_artifact_path) / 'data/images/'
+                data_dict['val'] = str(val_path)
+                self.val_table = self.val_artifact.get("val")
+                self.map_val_table_path()
+        if self.val_artifact is not None:
+            self.result_artifact = wandb.Artifact("run_" + wandb.run.id + "_progress", "evaluation")
+            self.result_table = wandb.Table(["epoch", "id", "prediction", "avg_confidence"])
+        if opt.bbox_interval == -1:
+            self.bbox_interval = opt.bbox_interval = (opt.epochs // 10) if opt.epochs > 10 else 1
+        return data_dict
+
+    def download_dataset_artifact(self, path, alias):
+        if isinstance(path, str) and path.startswith(WANDB_ARTIFACT_PREFIX):
+            dataset_artifact = wandb
