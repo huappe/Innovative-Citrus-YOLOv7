@@ -212,4 +212,25 @@ class WandbLogger():
             self.wandb_run.use_artifact(self.val_artifact)
             self.wandb_run.use_artifact(self.train_artifact)
             self.val_artifact.wait()
-            self.val_ta
+            self.val_table = self.val_artifact.get('val')
+            self.map_val_table_path()
+        else:
+            self.wandb_run.log_artifact(self.train_artifact)
+            self.wandb_run.log_artifact(self.val_artifact)
+        return path
+
+    def map_val_table_path(self):
+        self.val_table_map = {}
+        print("Mapping dataset")
+        for i, data in enumerate(tqdm(self.val_table.data)):
+            self.val_table_map[data[3]] = data[0]
+
+    def create_dataset_table(self, dataset, class_to_id, name='dataset'):
+        # TODO: Explore multiprocessing to slpit this loop parallely| This is essential for speeding up the the logging
+        artifact = wandb.Artifact(name=name, type="dataset")
+        img_files = tqdm([dataset.path]) if isinstance(dataset.path, str) and Path(dataset.path).is_dir() else None
+        img_files = tqdm(dataset.img_files) if not img_files else img_files
+        for img_file in img_files:
+            if Path(img_file).is_dir():
+                artifact.add_dir(img_file, name='data/images')
+                labels_path = 'labels'.join(d
