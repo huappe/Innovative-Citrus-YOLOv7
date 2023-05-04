@@ -268,4 +268,23 @@ class WandbLogger():
             for *xyxy, conf, cls in predn.tolist():
                 if conf >= 0.25:
                     box_data.append(
-                        {"position": {"minX":
+                        {"position": {"minX": xyxy[0], "minY": xyxy[1], "maxX": xyxy[2], "maxY": xyxy[3]},
+                         "class_id": int(cls),
+                         "box_caption": "%s %.3f" % (names[cls], conf),
+                         "scores": {"class_score": conf},
+                         "domain": "pixel"})
+                    total_conf = total_conf + conf
+            boxes = {"predictions": {"box_data": box_data, "class_labels": names}}  # inference-space
+            id = self.val_table_map[Path(path).name]
+            self.result_table.add_data(self.current_epoch,
+                                       id,
+                                       wandb.Image(self.val_table.data[id][1], boxes=boxes, classes=class_set),
+                                       total_conf / max(1, len(box_data))
+                                       )
+
+    def log(self, log_dict):
+        if self.wandb_run:
+            for key, value in log_dict.items():
+                self.log_dict[key] = value
+
+    def end_epoch(self, bes
