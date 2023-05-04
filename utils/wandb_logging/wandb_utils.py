@@ -248,4 +248,24 @@ class WandbLogger():
             box_data, img_classes = [], {}
             for cls, *xyxy in labels[:, 1:].tolist():
                 cls = int(cls)
-                box_data.append({"position": {"minX": xyxy[0], "minY": xyxy[1], "maxX": xyxy[2]
+                box_data.append({"position": {"minX": xyxy[0], "minY": xyxy[1], "maxX": xyxy[2], "maxY": xyxy[3]},
+                                 "class_id": cls,
+                                 "box_caption": "%s" % (class_to_id[cls]),
+                                 "scores": {"acc": 1},
+                                 "domain": "pixel"})
+                img_classes[cls] = class_to_id[cls]
+            boxes = {"ground_truth": {"box_data": box_data, "class_labels": class_to_id}}  # inference-space
+            table.add_data(si, wandb.Image(paths, classes=class_set, boxes=boxes), json.dumps(img_classes),
+                           Path(paths).name)
+        artifact.add(table, name)
+        return artifact
+
+    def log_training_progress(self, predn, path, names):
+        if self.val_table and self.result_table:
+            class_set = wandb.Classes([{'id': id, 'name': name} for id, name in names.items()])
+            box_data = []
+            total_conf = 0
+            for *xyxy, conf, cls in predn.tolist():
+                if conf >= 0.25:
+                    box_data.append(
+                        {"position": {"minX":
