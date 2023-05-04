@@ -1,0 +1,2 @@
+# Innovative-Citrus-YOLOv7
+This project effects use of the CBAM attention mechanism, GhostConv, and a small target detection layer. It is now maintained by huappe, and contributions to further enhance these systems are welcome.
